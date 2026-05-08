@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-#include "accel/primitive_list.hpp"
+#include "accel/bvh.hpp"
 #include "camera/camera.hpp"
 #include "geometry/primitive.hpp"
 #include "light/light.hpp"
@@ -18,7 +18,7 @@ public:
     /// Take ownership of a BSDF and return a non-owning pointer for primitives to reference
     const Bsdf* addBsdf(std::unique_ptr<Bsdf> bsdf);
 
-    /// Take ownership of a primitive and add it to the world intersector
+    /// Take ownership of a primitive. The BVH is rebuilt on the next build() call.
     void addPrimitive(std::unique_ptr<Primitive> primitive);
 
     /// Take ownership of a light
@@ -26,6 +26,10 @@ public:
 
     /// Set the camera (replaces any previous camera)
     void setCamera(std::unique_ptr<Camera> camera);
+
+    /// Build the world acceleration structure over all currently added primitives.
+    /// Idempotent: calling twice rebuilds from scratch.
+    void build();
 
     const Primitive& world() const { return world_; }
     const std::vector<std::unique_ptr<Light>>& lights() const { return lights_; }
@@ -36,7 +40,7 @@ private:
     std::vector<std::unique_ptr<Primitive>> primitives_;
     std::vector<std::unique_ptr<Light>> lights_;
     std::unique_ptr<Camera> camera_;
-    PrimitiveList world_;
+    Bvh world_;
 };
 
 }  // namespace nanopt

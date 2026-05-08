@@ -1,26 +1,32 @@
-//! Linear primitive list — replaced by BVH at M2
+//! Triangle primitive — Möller-Trumbore ray intersection
 
 #pragma once
 
 #include <optional>
-#include <vector>
 
 #include "geometry/aabb.hpp"
 #include "geometry/hit.hpp"
 #include "geometry/primitive.hpp"
+#include "math/point3.hpp"
 #include "math/ray.hpp"
+#include "math/vec3.hpp"
 
 namespace nanopt {
 
-class PrimitiveList : public Primitive {
+class Bsdf;
+
+class Triangle : public Primitive {
 public:
-    void add(const Primitive* primitive);
+    Triangle(Point3 v0, Point3 v1, Point3 v2, const Bsdf* bsdf);
 
     std::optional<Hit> intersect(const Ray& ray) const override;
     Aabb bounds() const override;
 
 private:
-    std::vector<const Primitive*> primitives_;
+    Point3 v0_;
+    Point3 v1_;
+    Point3 v2_;
+    const Bsdf* bsdf_;
 };
 
 }  // namespace nanopt
