@@ -11,7 +11,7 @@ namespace nanopt {
 PointLight::PointLight(Point3 position, Spectrum intensity)
     : position_(position), intensity_(intensity) {}
 
-LightSample PointLight::sample(Point3 from) const {
+LightSample PointLight::sample(Point3 from, Sample2D /*u*/) const {
     const Vec3 toLight = position_ - from;
     const float distSq = lengthSquared(toLight);
     const float dist = std::sqrt(distSq);

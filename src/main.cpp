@@ -1,4 +1,4 @@
-//! M2 entry point — loads cornell-box.obj and renders direct-lit Cornell room to out.ppm
+//! M2 entry point — loads cornell-box.obj and renders a path-traced Cornell room to out.ppm
 
 #include <cstdio>
 #include <memory>
@@ -10,9 +10,9 @@
 #include "geometry/triangle.hpp"
 #include "image/framebuffer.hpp"
 #include "image/ppm.hpp"
-#include "integrator/direct_integrator.hpp"
+#include "integrator/path_integrator.hpp"
 #include "io/obj_loader.hpp"
-#include "light/point_light.hpp"
+#include "light/area_light.hpp"
 #include "material/lambertian.hpp"
 #include "math/point3.hpp"
 #include "math/ray.hpp"
@@ -47,11 +47,32 @@ bool addObjToScene(Scene& scene, const ObjMesh& mesh,
     return true;
 }
 
+/// Build a downward-facing rectangular ceiling light from two triangles.
+/// Winding chosen so geometric normal points -y (into the room).
+void addCeilingLight(Scene& scene, const Bsdf* emitterBsdf, Spectrum emission) {
+    constexpr float kHalf = 0.1f;
+    constexpr float kY = 0.999f;
+    const Point3 a{-kHalf, kY, -kHalf};
+    const Point3 b{ kHalf, kY, -kHalf};
+    const Point3 c{ kHalf, kY,  kHalf};
+    const Point3 d{-kHalf, kY,  kHalf};
+
+    auto light0 = std::make_unique<AreaLight>(a, b, d, emission);
+    auto light1 = std::make_unique<AreaLight>(b, c, d, emission);
+    const AreaLight* l0 = light0.get();
+    const AreaLight* l1 = light1.get();
+    scene.addLight(std::move(light0));
+    scene.addLight(std::move(light1));
+    scene.addPrimitive(std::make_unique<Triangle>(a, b, d, emitterBsdf, l0));
+    scene.addPrimitive(std::make_unique<Triangle>(b, c, d, emitterBsdf, l1));
+}
+
 }  // namespace
 
 int main() {
     constexpr int kWidth = 512;
     constexpr int kHeight = 512;
+    constexpr int kSamplesPerPixel = 256;
 
     auto mesh = loadObj(kCornellPath);
     if (!mesh.has_value()) {
@@ -66,6 +87,9 @@ int main() {
         scene.addBsdf(std::make_unique<LambertianBsdf>(Spectrum{0.65f, 0.05f, 0.05f}));
     const Bsdf* green =
         scene.addBsdf(std::make_unique<LambertianBsdf>(Spectrum{0.12f, 0.45f, 0.15f}));
+    // Black BSDF placeholder for emitter primitives — never sampled because the path terminates on emitter hits.
+    const Bsdf* black =
+        scene.addBsdf(std::make_unique<LambertianBsdf>(Spectrum{0.0f, 0.0f, 0.0f}));
 
     const std::unordered_map<std::string, const Bsdf*> materials{
         {"white", white},
@@ -76,9 +100,7 @@ int main() {
         return 1;
     }
 
-    // Stand-in for the ceiling area light at M2 — point light just below the ceiling.
-    scene.addLight(
-        std::make_unique<PointLight>(Point3{0.0f, 0.95f, 0.0f}, Spectrum{1.5f}));
+    addCeilingLight(scene, black, Spectrum{15.0f});
 
     scene.setCamera(std::make_unique<PinholeCamera>(
         Point3{0.0f, 0.5f, 1.6f},
@@ -89,20 +111,26 @@ int main() {
 
     scene.build();
 
-    DirectIntegrator integrator{Spectrum{0.0f}};
+    PathIntegrator integrator{};
     UniformSampler sampler{42};
     Framebuffer framebuffer{kWidth, kHeight};
 
+    const float invSpp = 1.0f / static_cast<float>(kSamplesPerPixel);
     for (int y = 0; y < kHeight; ++y) {
         for (int x = 0; x < kWidth; ++x) {
-            const float u = (static_cast<float>(x) + 0.5f) / static_cast<float>(kWidth);
-            const float v =
-                1.0f - (static_cast<float>(y) + 0.5f) / static_cast<float>(kHeight);
-            const Ray ray = scene.camera().generateRay(u, v);
-            const Spectrum color = integrator.Li(ray, scene, sampler);
-            framebuffer.setPixel(x, y, color);
+            sampler.startPixel(x, y);
+            Spectrum sum{0.0f};
+            for (int s = 0; s < kSamplesPerPixel; ++s) {
+                const Sample2D jitter = sampler.get2D();
+                const float u = (static_cast<float>(x) + jitter.u) / static_cast<float>(kWidth);
+                const float v =
+                    1.0f - (static_cast<float>(y) + jitter.v) / static_cast<float>(kHeight);
+                const Ray ray = scene.camera().generateRay(u, v);
+                sum += integrator.Li(ray, scene, sampler);
+            }
+            framebuffer.setPixel(x, y, sum * invSpp);
         }
-        if ((y % 64) == 0) {
+        if ((y % 32) == 0) {
             std::printf("Row %d/%d\n", y, kHeight);
         }
     }

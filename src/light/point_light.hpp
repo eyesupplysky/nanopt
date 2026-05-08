@@ -12,7 +12,8 @@ class PointLight : public Light {
 public:
     PointLight(Point3 position, Spectrum intensity);
 
-    LightSample sample(Point3 from) const override;
+    LightSample sample(Point3 from, Sample2D u) const override;
+    bool isDelta() const override { return true; }
 
 private:
     Point3 position_;

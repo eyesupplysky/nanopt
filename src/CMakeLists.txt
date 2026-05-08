@@ -7,9 +7,11 @@ add_library(nanopt_core STATIC
     accel/bvh.cpp
     camera/pinhole_camera.cpp
     light/point_light.cpp
+    light/area_light.cpp
     material/lambertian.cpp
     scene/scene.cpp
     integrator/direct_integrator.cpp
+    integrator/path_integrator.cpp
     io/obj_loader.cpp
 )
 

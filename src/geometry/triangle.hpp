@@ -14,10 +14,12 @@
 namespace nanopt {
 
 class Bsdf;
+class AreaLight;
 
 class Triangle : public Primitive {
 public:
-    Triangle(Point3 v0, Point3 v1, Point3 v2, const Bsdf* bsdf);
+    Triangle(Point3 v0, Point3 v1, Point3 v2, const Bsdf* bsdf,
+             const AreaLight* areaLight = nullptr);
 
     std::optional<Hit> intersect(const Ray& ray) const override;
     Aabb bounds() const override;
@@ -27,6 +29,7 @@ private:
     Point3 v1_;
     Point3 v2_;
     const Bsdf* bsdf_;
+    const AreaLight* areaLight_;
 };
 
 }  // namespace nanopt

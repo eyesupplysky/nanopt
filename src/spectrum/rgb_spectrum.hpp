@@ -30,6 +30,12 @@ struct RgbSpectrum {
     }
 
     constexpr bool isBlack() const { return r == 0.0f && g == 0.0f && b == 0.0f; }
+
+    /// Largest component — used for Russian-roulette throughput thresholds
+    constexpr float maxComponent() const {
+        const float rg = r > g ? r : g;
+        return rg > b ? rg : b;
+    }
 };
 
 constexpr RgbSpectrum operator*(float s, RgbSpectrum c) { return c * s; }

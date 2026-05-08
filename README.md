@@ -7,13 +7,13 @@ Spectral rendering pays back the ~2× scope over an RGB tracer with dispersion (
 ## Status
 
 - [x] **M1** — RGB pinhole ray caster: scene graph, sphere primitive, ray-sphere intersection, single-bounce direct lighting, PPM output.
-- [ ] **M2** — Path tracing (RGB): Russian-roulette-terminated multi-bounce GI, BVH for triangle meshes, OBJ loader, Cornell box.
+- [x] **M2** — Path tracing (RGB): Russian-roulette-terminated multi-bounce GI, BVH for triangle meshes, OBJ loader, Cornell box.
 - [ ] **M3** — Spectral upgrade: wavelength sampling, hero-wavelength MIS, CIE 1931 → sRGB output.
 - [ ] **M4** — Materials: Lambertian, conductor (Fresnel + GGX), dielectric (wavelength-dependent IOR via Sellmeier).
 - [ ] **M5** — Importance sampling: MIS for direct lighting, cosine-weighted hemisphere sampling, GGX VNDF sampling.
 - [ ] **M6** — Multithreading + polish: tile-based parallel renderer, public documentation of the light transport equation, spectral pipeline, BVH layout, and BRDF reference.
 
-M2 is in progress. The triangle primitive, a SAH BVH, and a minimal OBJ loader have landed; the Cornell box loads from `assets/cornell-box.obj` and renders under direct lighting. Path tracing and area lights are next.
+M2 is complete. The Cornell box at `assets/cornell-box.obj` renders via a path-traced integrator with next-event estimation, Russian-roulette path termination, and a diffuse area light. Soft shadows and color bleeding are visible; the canonical 256-sample reference render lives at `references/m2-cornell.png` as the visual-diff baseline for future milestones.
 
 ## Build
 

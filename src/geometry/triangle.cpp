@@ -9,8 +9,9 @@
 
 namespace nanopt {
 
-Triangle::Triangle(Point3 v0, Point3 v1, Point3 v2, const Bsdf* bsdf)
-    : v0_(v0), v1_(v1), v2_(v2), bsdf_(bsdf) {}
+Triangle::Triangle(Point3 v0, Point3 v1, Point3 v2, const Bsdf* bsdf,
+                   const AreaLight* areaLight)
+    : v0_(v0), v1_(v1), v2_(v2), bsdf_(bsdf), areaLight_(areaLight) {}
 
 std::optional<Hit> Triangle::intersect(const Ray& ray) const {
     // Möller-Trumbore: solve O + tD = v0 + u(v1-v0) + v(v2-v0) for (t, u, v).
@@ -48,6 +49,7 @@ std::optional<Hit> Triangle::intersect(const Ray& ray) const {
     hit.position = ray.at(t);
     hit.normal = normalize(cross(e1, e2));
     hit.bsdf = bsdf_;
+    hit.areaLight = areaLight_;
     return hit;
 }
 

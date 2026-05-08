@@ -3,6 +3,7 @@ build/
 vcpkg_installed/
 .cache/
 *.ppm
+out.png
 
 # IDE
 .idea/

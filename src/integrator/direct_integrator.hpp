@@ -1,4 +1,4 @@
-//! Direct-lighting integrator — single-bounce shading for M1
+//! Direct-lighting integrator — single-bounce shading; kept as a baseline alongside PathIntegrator
 
 #pragma once
 
