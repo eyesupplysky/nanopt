@@ -47,4 +47,13 @@ inline Sample2D uniformTriangleBarycentric(Sample2D u) {
     return {1.0f - su, u.v * su};
 }
 
+/// Veach power-2 MIS heuristic: weight for strategy A combined with strategy B.
+/// Returns 0 when both pdfs are zero (caller should skip the contribution anyway).
+inline float powerHeuristic(float pdfA, float pdfB) {
+    const float a2 = pdfA * pdfA;
+    const float b2 = pdfB * pdfB;
+    const float denom = a2 + b2;
+    return denom > 0.0f ? a2 / denom : 0.0f;
+}
+
 }  // namespace nanopt

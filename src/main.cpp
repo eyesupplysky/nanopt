@@ -1,4 +1,4 @@
-//! M4 entry point — renders the Cornell room with a glass dragon (Stanford XYZ RGB) and a gold sphere
+//! M5 entry point — renders the Cornell room with a glass dragon, gold sphere, and a Veach-style row of equal-flux ceiling lights at varying sizes (small/intense → large/dim) to exercise direct-lighting MIS
 
 #include <algorithm>
 #include <cstdio>
@@ -103,15 +103,15 @@ bool addObjToScene(Scene& scene, const ObjMesh& mesh,
     return true;
 }
 
-/// Build a downward-facing rectangular ceiling light from two triangles.
+/// Build a downward-facing rectangular ceiling light from two triangles centred at (cx, cz).
 /// Winding chosen so geometric normal points -y (into the room).
-void addCeilingLight(Scene& scene, const Bsdf* emitterBsdf, RgbSpectrum emissionRgb) {
-    constexpr float kHalf = 0.1f;
+void addCeilingQuadLight(Scene& scene, const Bsdf* emitterBsdf, RgbSpectrum emissionRgb,
+                         float cx, float cz, float halfX, float halfZ) {
     constexpr float kY = 0.999f;
-    const Point3 a{-kHalf, kY, -kHalf};
-    const Point3 b{ kHalf, kY, -kHalf};
-    const Point3 c{ kHalf, kY,  kHalf};
-    const Point3 d{-kHalf, kY,  kHalf};
+    const Point3 a{cx - halfX, kY, cz - halfZ};
+    const Point3 b{cx + halfX, kY, cz - halfZ};
+    const Point3 c{cx + halfX, kY, cz + halfZ};
+    const Point3 d{cx - halfX, kY, cz + halfZ};
 
     auto light0 = std::make_unique<AreaLight>(a, b, d, emissionRgb);
     auto light1 = std::make_unique<AreaLight>(b, c, d, emissionRgb);
@@ -121,6 +121,31 @@ void addCeilingLight(Scene& scene, const Bsdf* emitterBsdf, RgbSpectrum emission
     scene.addLight(std::move(light1));
     scene.addPrimitive(std::make_unique<Triangle>(a, b, d, emitterBsdf, l0));
     scene.addPrimitive(std::make_unique<Triangle>(b, c, d, emitterBsdf, l1));
+}
+
+/// Veach-style row of four equal-flux area lights at increasing size (decreasing intensity).
+/// Sizes/intensities are tuned so the integrated flux ≈ the M4 single-light reference.
+/// Demonstrates MIS variance reduction: small lights favour the light strategy; large lights
+/// favour the BSDF strategy. With MIS both regimes converge cleanly.
+void addVeachCeilingLights(Scene& scene, const Bsdf* emitterBsdf) {
+    struct LightSpec {
+        float cx;
+        float halfX;
+        float halfZ;
+        float intensity;
+    };
+    // Equal-flux row: each light radiates ≈ the original Cornell ceiling light's per-light flux.
+    // (intensity × full-area is constant ≈ 0.15 per channel.)
+    constexpr LightSpec kLights[] = {
+        {-0.36f, 0.020f, 0.020f, 93.75f},
+        {-0.12f, 0.040f, 0.040f, 23.4375f},
+        { 0.12f, 0.080f, 0.080f,  5.859375f},
+        { 0.36f, 0.140f, 0.140f,  1.91326f},
+    };
+    for (const LightSpec& l : kLights) {
+        addCeilingQuadLight(scene, emitterBsdf, RgbSpectrum{l.intensity, l.intensity, l.intensity},
+                            l.cx, 0.0f, l.halfX, l.halfZ);
+    }
 }
 
 }  // namespace
@@ -156,7 +181,7 @@ int main() {
         return 1;
     }
 
-    addCeilingLight(scene, black, RgbSpectrum{15.0f, 15.0f, 15.0f});
+    addVeachCeilingLights(scene, black);
 
     // Stanford XYZ RGB Dragon, glass (SF10) — centred on the floor
     auto dragonMesh = loadObj(kDragonPath);

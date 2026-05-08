@@ -25,6 +25,13 @@ public:
     /// u supplies the 2D random sample needed by area-style lights; delta lights ignore it.
     virtual LightSample sample(Point3 from, Sample2D u, const SampledWavelengths& lambdas) const = 0;
 
+    /// Solid-angle pdf that sample() would assign to wi from `from`. Default 0 — correct for delta lights
+    /// (probability zero of an arbitrary wi matching the delta direction). Non-delta lights override.
+    virtual float pdfLi(Point3 from, Vec3 wi, const SampledWavelengths& lambdas) const {
+        (void)from; (void)wi; (void)lambdas;
+        return 0.0f;
+    }
+
     /// True for delta-distribution lights (point, directional). Integrators skip pdf division for these.
     virtual bool isDelta() const { return false; }
 };

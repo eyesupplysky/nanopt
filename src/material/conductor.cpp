@@ -91,4 +91,26 @@ BsdfSample ConductorBsdf::sample(Vec3 woWorld, const Frame& frame, Sampler& samp
     return s;
 }
 
+float ConductorBsdf::pdf(Vec3 wiWorld, Vec3 woWorld, const Frame& frame,
+                         const SampledWavelengths& /*lambdas*/) const {
+    const Vec3 wi = frame.toLocal(wiWorld);
+    const Vec3 wo = frame.toLocal(woWorld);
+    if (wi.z <= 0.0f || wo.z <= 0.0f) {
+        return 0.0f;
+    }
+    Vec3 h = wi + wo;
+    if (h.x == 0.0f && h.y == 0.0f && h.z == 0.0f) {
+        return 0.0f;
+    }
+    h = normalize(h);
+    if (h.z <= 0.0f) {
+        return 0.0f;
+    }
+    // VNDF half-vector pdf G1(wo)·max(0,wo·h)·D(h)/cosθ_o, divided by reflection Jacobian 4·|wo·h|.
+    // wo·h cancels, leaving G1(wo)·D(h)/(4·cosθ_o) — matches BsdfSample::pdf in sample().
+    const float D = ggxD(h, alpha_);
+    const float G1wo = ggxG1(wo, alpha_);
+    return G1wo * D / (4.0f * wo.z);
+}
+
 }  // namespace nanopt

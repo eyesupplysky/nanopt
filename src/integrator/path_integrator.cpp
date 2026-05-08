@@ -13,6 +13,7 @@
 #include "material/bsdf.hpp"
 #include "math/point3.hpp"
 #include "math/ray.hpp"
+#include "math/sampling.hpp"
 #include "math/vec3.hpp"
 #include "sampler/sampler.hpp"
 #include "scene/scene.hpp"
@@ -25,10 +26,12 @@ namespace {
 constexpr float kShadowEpsilon = 1e-4f;
 constexpr float kSpawnEpsilon = 1e-4f;
 
+// Light-strategy half of the two-strategy direct-lighting MIS estimator. The matching BSDF strategy
+// is the path tracer's bounce ray itself: when the continuation hits an emitter, PathIntegrator
+// adds that contribution with the complementary MIS weight (Phase C). For delta lights, no BSDF
+// strategy can match the delta direction, so weight is 1 here.
 Spectrum estimateDirectLighting(const Scene& scene, const Hit& hit, Vec3 wo, Sampler& sampler,
                                 const SampledWavelengths& lambdas) {
-    // Delta BSDFs (e.g. smooth dielectric) cannot be NEE-sampled — eval is identically zero
-    // against a light-sampled direction.
     if (hit.bsdf->isDelta()) {
         return Spectrum{0.0f};
     }
@@ -48,11 +51,14 @@ Spectrum estimateDirectLighting(const Scene& scene, const Hit& hit, Vec3 wo, Sam
             continue;
         }
         const Spectrum f = hit.bsdf->eval(ls.wi, wo, hit.frame, lambdas);
-        Spectrum contribution = f * ls.radiance * cosTheta;
-        if (!light->isDelta()) {
-            contribution = contribution / ls.pdf;
+        const Spectrum contribution = f * ls.radiance * cosTheta;
+        if (light->isDelta()) {
+            total += contribution;
+            continue;
         }
-        total += contribution;
+        const float bsdfPdf = hit.bsdf->pdf(ls.wi, wo, hit.frame, lambdas);
+        const float weight = powerHeuristic(ls.pdf, bsdfPdf);
+        total += contribution * (weight / ls.pdf);
     }
     return total;
 }
@@ -71,6 +77,12 @@ Spectrum PathIntegrator::Li(const Ray& primary, const Scene& scene, Sampler& sam
     Spectrum throughput{1.0f};
     Ray ray = primary;
 
+    // MIS bookkeeping for indirect emitter hits (BSDF strategy of the direct-lighting MIS).
+    // Camera ray has no preceding NEE strategy, so the first emitter hit is unweighted.
+    bool prevBounceSpecular = true;
+    float prevBsdfPdf = 0.0f;
+    Point3 prevHitPos{};
+
     for (int depth = 0; depth < maxDepth_; ++depth) {
         const std::optional<Hit> hit = scene.world().intersect(ray);
         if (!hit.has_value()) {
@@ -81,10 +93,18 @@ Spectrum PathIntegrator::Li(const Ray& primary, const Scene& scene, Sampler& sam
         const Vec3 wo = -ray.direction;
 
         if (hit->areaLight != nullptr) {
-            // Direct primary-ray hit on emitter: add emission and terminate.
-            // NEE owns indirect emitter contributions, so we must drop bounce > 0.
-            if (depth == 0 && dot(wo, hit->geometricNormal) > 0.0f) {
-                L += throughput * hit->areaLight->emit(lambdas);
+            // BSDF strategy of the direct-lighting MIS: previous bounce sampled this direction
+            // from the BSDF, the ray landed on an emitter, contribute Le with the MIS weight
+            // against the matching light-strategy pdf.
+            if (dot(wo, hit->geometricNormal) > 0.0f) {
+                const Spectrum Le = hit->areaLight->emit(lambdas);
+                if (prevBounceSpecular) {
+                    L += throughput * Le;
+                } else {
+                    const float lightPdf = hit->areaLight->pdfLi(prevHitPos, ray.direction, lambdas);
+                    const float weight = powerHeuristic(prevBsdfPdf, lightPdf);
+                    L += throughput * Le * weight;
+                }
             }
             break;
         }
@@ -104,6 +124,12 @@ Spectrum PathIntegrator::Li(const Ray& primary, const Scene& scene, Sampler& sam
         if (bs.dispersive) {
             lambdas.terminateSecondary();
         }
+
+        // Stash MIS state for the next iteration's emitter-hit check.
+        // Delta and dispersive samples have no light-strategy competitor — weight is 1.
+        prevBounceSpecular = hit->bsdf->isDelta() || bs.dispersive;
+        prevBsdfPdf = bs.pdf;
+        prevHitPos = hit->position;
 
         if (depth >= rrStartDepth_) {
             const float q = std::min(0.95f, throughput.maxComponent());

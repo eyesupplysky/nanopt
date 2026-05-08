@@ -27,4 +27,11 @@ BsdfSample LambertianBsdf::sample(Vec3 /*wo*/, const Frame& frame, Sampler& samp
     return s;
 }
 
+float LambertianBsdf::pdf(Vec3 wiWorld, Vec3 /*wo*/, const Frame& frame,
+                          const SampledWavelengths& /*lambdas*/) const {
+    const Vec3 wiLocal = frame.toLocal(wiWorld);
+    if (wiLocal.z <= 0.0f) return 0.0f;
+    return cosineHemispherePdf(wiLocal.z);
+}
+
 }  // namespace nanopt

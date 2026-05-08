@@ -1,4 +1,4 @@
-//! Uniform pseudo-random sampler — placeholder until stratified / Sobol arrives at M5
+//! Uniform pseudo-random sampler — placeholder until stratified / Sobol arrives alongside the M6 threading sampler refactor
 
 #pragma once
 

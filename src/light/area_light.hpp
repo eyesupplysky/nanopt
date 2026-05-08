@@ -16,6 +16,7 @@ public:
     AreaLight(Point3 v0, Point3 v1, Point3 v2, RgbSpectrum emissionRgb);
 
     LightSample sample(Point3 from, Sample2D u, const SampledWavelengths& lambdas) const override;
+    float pdfLi(Point3 from, Vec3 wi, const SampledWavelengths& lambdas) const override;
     bool isDelta() const override { return false; }
 
     /// Outgoing radiance from this emitter at the supplied wavelengths — added to the path on a direct emitter hit
