@@ -1,11 +1,10 @@
-//! Geometric sampling helpers — concentric disk, cosine hemisphere, uniform triangle, ONB
+//! Geometric sampling helpers — concentric disk, cosine hemisphere, uniform triangle
 
 #pragma once
 
 #include <cmath>
 #include <numbers>
 
-#include "math/normal3.hpp"
 #include "math/vec3.hpp"
 #include "sampler/sampler.hpp"
 
@@ -41,20 +40,6 @@ inline Vec3 cosineHemisphereLocal(Sample2D u) {
 /// PDF (solid angle) of a cosine-weighted hemisphere sample whose local +z component is cosTheta
 inline float cosineHemispherePdf(float cosTheta) {
     return cosTheta * std::numbers::inv_pi_v<float>;
-}
-
-/// Branchless orthonormal basis around n, after Duff et al. ("Building an Orthonormal Basis, Revisited")
-inline void buildOrthonormalBasis(Normal3 n, Vec3& tangent, Vec3& bitangent) {
-    const float sign = std::copysignf(1.0f, n.z);
-    const float a = -1.0f / (sign + n.z);
-    const float b = n.x * n.y * a;
-    tangent = Vec3{1.0f + sign * n.x * n.x * a, sign * b, -sign * n.x};
-    bitangent = Vec3{b, sign + n.y * n.y * a, -n.y};
-}
-
-/// Transform a vector from a local tangent frame (z aligned with n) into world space
-inline Vec3 fromTangentSpace(Vec3 local, Vec3 tangent, Vec3 bitangent, Normal3 n) {
-    return tangent * local.x + bitangent * local.y + n * local.z;
 }
 
 inline Sample2D uniformTriangleBarycentric(Sample2D u) {

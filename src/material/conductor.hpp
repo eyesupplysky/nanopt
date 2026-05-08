@@ -1,21 +1,22 @@
-//! Lambertian (perfect diffuse) BSDF
+//! Rough-conductor BSDF — GGX microfacet with measured complex IOR
 
 #pragma once
 
 #include "material/bsdf.hpp"
-#include "spectrum/rgb_spectrum.hpp"
+#include "material/conductor_data.hpp"
 
 namespace nanopt {
 
-class LambertianBsdf : public Bsdf {
+class ConductorBsdf : public Bsdf {
 public:
-    explicit LambertianBsdf(RgbSpectrum albedoRgb);
+    ConductorBsdf(MetalKind metal, float roughness);
 
     Spectrum eval(Vec3 wi, Vec3 wo, const Frame& frame, const SampledWavelengths& lambdas) const override;
     BsdfSample sample(Vec3 wo, const Frame& frame, Sampler& sampler, const SampledWavelengths& lambdas) const override;
 
 private:
-    RgbSpectrum albedoRgb_;
+    MetalKind metal_;
+    float alpha_;
 };
 
 }  // namespace nanopt

@@ -1,4 +1,4 @@
-//! Surface normal — alias to Vec3 until shading frames force the distinction at M4
+//! Surface normal — alias to Vec3 until scene transforms force normal-vs-vector transformation rules to diverge
 
 #pragma once
 

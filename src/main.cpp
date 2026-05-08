@@ -1,19 +1,25 @@
-//! M2 entry point — loads cornell-box.obj and renders a path-traced Cornell room to out.ppm
+//! M4 entry point — renders the Cornell room with a glass dragon (Stanford XYZ RGB) and a gold sphere
 
+#include <algorithm>
 #include <cstdio>
+#include <limits>
 #include <memory>
 #include <numbers>
 #include <string>
 #include <unordered_map>
 
 #include "camera/pinhole_camera.hpp"
+#include "geometry/sphere.hpp"
 #include "geometry/triangle.hpp"
 #include "image/framebuffer.hpp"
 #include "image/ppm.hpp"
 #include "integrator/path_integrator.hpp"
 #include "io/obj_loader.hpp"
 #include "light/area_light.hpp"
+#include "material/conductor.hpp"
+#include "material/dielectric.hpp"
 #include "material/lambertian.hpp"
+#include "material/sellmeier.hpp"
 #include "math/point3.hpp"
 #include "math/ray.hpp"
 #include "math/vec3.hpp"
@@ -29,7 +35,46 @@ using namespace nanopt;
 
 namespace {
 
-constexpr const char* kCornellPath = "assets/cornell-box.obj";
+constexpr const char* kCornellPath = "assets/cornell-empty.obj";
+constexpr const char* kDragonPath = "assets/dragon.obj";
+
+/// Scale + translate a mesh's positions in place so its y-min sits on the floor and its
+/// horizontal centre rests at the requested xz coordinate. Returns the resulting bbox.
+struct Bbox {
+    Point3 min;
+    Point3 max;
+};
+
+Bbox computeBbox(const ObjMesh& mesh) {
+    constexpr float kInf = std::numeric_limits<float>::infinity();
+    Bbox box{Point3{kInf, kInf, kInf}, Point3{-kInf, -kInf, -kInf}};
+    for (const Point3& p : mesh.positions) {
+        box.min.x = std::min(box.min.x, p.x);
+        box.min.y = std::min(box.min.y, p.y);
+        box.min.z = std::min(box.min.z, p.z);
+        box.max.x = std::max(box.max.x, p.x);
+        box.max.y = std::max(box.max.y, p.y);
+        box.max.z = std::max(box.max.z, p.z);
+    }
+    return box;
+}
+
+void fitMeshOnFloor(ObjMesh& mesh, float targetHeight, float centreX, float centreZ) {
+    const Bbox box = computeBbox(mesh);
+    const float h = box.max.y - box.min.y;
+    if (h <= 0.0f) {
+        return;
+    }
+    const float scale = targetHeight / h;
+    const float preCx = (box.min.x + box.max.x) * 0.5f;
+    const float preCz = (box.min.z + box.max.z) * 0.5f;
+    const float preMinY = box.min.y;
+    for (Point3& p : mesh.positions) {
+        p.x = (p.x - preCx) * scale + centreX;
+        p.y = (p.y - preMinY) * scale;
+        p.z = (p.z - preCz) * scale + centreZ;
+    }
+}
 
 bool addObjToScene(Scene& scene, const ObjMesh& mesh,
                    const std::unordered_map<std::string, const Bsdf*>& materials,
@@ -46,7 +91,14 @@ bool addObjToScene(Scene& scene, const ObjMesh& mesh,
         const Point3 v0 = mesh.positions[face.indices[0]];
         const Point3 v1 = mesh.positions[face.indices[1]];
         const Point3 v2 = mesh.positions[face.indices[2]];
-        scene.addPrimitive(std::make_unique<Triangle>(v0, v1, v2, bsdf));
+        if (face.hasNormals) {
+            const Vec3 n0 = mesh.normals[face.normalIndices[0]];
+            const Vec3 n1 = mesh.normals[face.normalIndices[1]];
+            const Vec3 n2 = mesh.normals[face.normalIndices[2]];
+            scene.addPrimitive(std::make_unique<Triangle>(v0, v1, v2, n0, n1, n2, bsdf));
+        } else {
+            scene.addPrimitive(std::make_unique<Triangle>(v0, v1, v2, bsdf));
+        }
     }
     return true;
 }
@@ -105,6 +157,25 @@ int main() {
     }
 
     addCeilingLight(scene, black, RgbSpectrum{15.0f, 15.0f, 15.0f});
+
+    // Stanford XYZ RGB Dragon, glass (SF10) — centred on the floor
+    auto dragonMesh = loadObj(kDragonPath);
+    if (!dragonMesh.has_value()) {
+        std::fprintf(stderr, "Failed to load %s\n", kDragonPath);
+        return 1;
+    }
+    fitMeshOnFloor(*dragonMesh, 0.42f, 0.0f, 0.0f);
+    computeVertexNormals(*dragonMesh);
+    const Bsdf* glass =
+        scene.addBsdf(std::make_unique<DielectricBsdf>(kSf10));
+    if (!addObjToScene(scene, *dragonMesh, {}, glass)) {
+        return 1;
+    }
+
+    // Gold sphere on the floor, off to the right of the dragon
+    const Bsdf* gold =
+        scene.addBsdf(std::make_unique<ConductorBsdf>(MetalKind::Gold, 0.1f));
+    scene.addPrimitive(std::make_unique<Sphere>(Point3{0.35f, 0.1f, 0.25f}, 0.1f, gold));
 
     scene.setCamera(std::make_unique<PinholeCamera>(
         Point3{0.0f, 0.5f, 1.6f},

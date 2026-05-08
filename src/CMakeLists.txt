@@ -9,6 +9,9 @@ add_library(nanopt_core STATIC
     light/point_light.cpp
     light/area_light.cpp
     material/lambertian.cpp
+    material/conductor.cpp
+    material/conductor_data.cpp
+    material/dielectric.cpp
     scene/scene.cpp
     spectrum/cie.cpp
     spectrum/rgb_upsample.cpp

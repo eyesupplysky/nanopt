@@ -5,6 +5,7 @@
 #include <cmath>
 #include <optional>
 
+#include "math/frame.hpp"
 #include "math/vec3.hpp"
 
 namespace nanopt {
@@ -37,7 +38,9 @@ std::optional<Hit> Sphere::intersect(const Ray& ray) const {
     Hit hit;
     hit.t = t;
     hit.position = ray.at(t);
-    hit.normal = normalize(hit.position - center_);
+    const Normal3 n = normalize(hit.position - center_);
+    hit.geometricNormal = n;
+    hit.frame = Frame::fromNormal(n);
     hit.bsdf = bsdf_;
     return hit;
 }

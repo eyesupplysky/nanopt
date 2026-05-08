@@ -27,6 +27,12 @@ Spectrum DirectIntegrator::Li(const Ray& ray, const Scene& scene, Sampler& sampl
         return sampledIlluminantFromRgb(backgroundRgb_, lambdas);
     }
 
+    // Delta BSDFs (e.g. smooth dielectric) cannot be NEE-sampled — eval against a light-sampled
+    // direction is identically zero, so the shadow ray is wasted.
+    if (hit->bsdf->isDelta()) {
+        return Spectrum{0.0f};
+    }
+
     Spectrum total{0.0f};
     constexpr float kShadowEpsilon = 1e-4f;
 
@@ -42,12 +48,12 @@ Spectrum DirectIntegrator::Li(const Ray& ray, const Scene& scene, Sampler& sampl
             continue;
         }
 
-        const float cosTheta = std::max(0.0f, dot(ls.wi, hit->normal));
+        const float cosTheta = std::max(0.0f, dot(ls.wi, hit->frame.n));
         if (cosTheta <= 0.0f) {
             continue;
         }
 
-        const Spectrum f = hit->bsdf->eval(ls.wi, -ray.direction, hit->normal, lambdas);
+        const Spectrum f = hit->bsdf->eval(ls.wi, -ray.direction, hit->frame, lambdas);
         Spectrum contribution = f * ls.radiance * cosTheta;
         if (!light->isDelta()) {
             contribution = contribution / ls.pdf;

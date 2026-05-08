@@ -1,21 +1,22 @@
-//! Lambertian (perfect diffuse) BSDF
+//! Smooth-dielectric BSDF — perfect specular reflect/refract with wavelength-dependent IOR
 
 #pragma once
 
 #include "material/bsdf.hpp"
-#include "spectrum/rgb_spectrum.hpp"
+#include "material/sellmeier.hpp"
 
 namespace nanopt {
 
-class LambertianBsdf : public Bsdf {
+class DielectricBsdf : public Bsdf {
 public:
-    explicit LambertianBsdf(RgbSpectrum albedoRgb);
+    explicit DielectricBsdf(SellmeierGlass glass);
 
     Spectrum eval(Vec3 wi, Vec3 wo, const Frame& frame, const SampledWavelengths& lambdas) const override;
     BsdfSample sample(Vec3 wo, const Frame& frame, Sampler& sampler, const SampledWavelengths& lambdas) const override;
+    bool isDelta() const override { return true; }
 
 private:
-    RgbSpectrum albedoRgb_;
+    SellmeierGlass glass_;
 };
 
 }  // namespace nanopt
