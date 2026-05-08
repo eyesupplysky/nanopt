@@ -4,6 +4,7 @@
 
 #include "integrator/integrator.hpp"
 #include "math/ray.hpp"
+#include "spectrum/rgb_spectrum.hpp"
 #include "spectrum/spectrum.hpp"
 
 namespace nanopt {
@@ -13,12 +14,13 @@ class Sampler;
 
 class DirectIntegrator : public Integrator {
 public:
-    explicit DirectIntegrator(Spectrum background = Spectrum{0.0f});
+    explicit DirectIntegrator(RgbSpectrum backgroundRgb = RgbSpectrum{});
 
-    Spectrum Li(const Ray& ray, const Scene& scene, Sampler& sampler) const override;
+    Spectrum Li(const Ray& ray, const Scene& scene, Sampler& sampler,
+                const SampledWavelengths& lambdas) const override;
 
 private:
-    Spectrum background_;
+    RgbSpectrum backgroundRgb_;
 };
 
 }  // namespace nanopt

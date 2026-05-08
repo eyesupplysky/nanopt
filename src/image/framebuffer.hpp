@@ -1,11 +1,11 @@
-//! Pixel grid storing accumulated radiance in linear Spectrum units
+//! Pixel grid storing accumulated tristimulus radiance in CIE XYZ
 
 #pragma once
 
 #include <cstddef>
 #include <vector>
 
-#include "spectrum/spectrum.hpp"
+#include "spectrum/cie.hpp"
 
 namespace nanopt {
 
@@ -17,17 +17,17 @@ public:
     int height() const { return height_; }
 
     /// Replace the pixel at (x, y)
-    void setPixel(int x, int y, Spectrum color);
+    void setPixel(int x, int y, Xyz color);
 
     /// Read the pixel at (x, y)
-    Spectrum pixel(int x, int y) const;
+    Xyz pixel(int x, int y) const;
 
-    const std::vector<Spectrum>& pixels() const { return pixels_; }
+    const std::vector<Xyz>& pixels() const { return pixels_; }
 
 private:
     int width_;
     int height_;
-    std::vector<Spectrum> pixels_;
+    std::vector<Xyz> pixels_;
 };
 
 }  // namespace nanopt

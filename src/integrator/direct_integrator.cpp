@@ -14,22 +14,24 @@
 #include "math/vec3.hpp"
 #include "sampler/sampler.hpp"
 #include "scene/scene.hpp"
+#include "spectrum/rgb_upsample.hpp"
 
 namespace nanopt {
 
-DirectIntegrator::DirectIntegrator(Spectrum background) : background_(background) {}
+DirectIntegrator::DirectIntegrator(RgbSpectrum backgroundRgb) : backgroundRgb_(backgroundRgb) {}
 
-Spectrum DirectIntegrator::Li(const Ray& ray, const Scene& scene, Sampler& sampler) const {
+Spectrum DirectIntegrator::Li(const Ray& ray, const Scene& scene, Sampler& sampler,
+                              const SampledWavelengths& lambdas) const {
     const std::optional<Hit> hit = scene.world().intersect(ray);
     if (!hit.has_value()) {
-        return background_;
+        return sampledIlluminantFromRgb(backgroundRgb_, lambdas);
     }
 
     Spectrum total{0.0f};
     constexpr float kShadowEpsilon = 1e-4f;
 
     for (const auto& light : scene.lights()) {
-        const LightSample ls = light->sample(hit->position, sampler.get2D());
+        const LightSample ls = light->sample(hit->position, sampler.get2D(), lambdas);
         if (ls.pdf <= 0.0f || ls.radiance.isBlack()) {
             continue;
         }
@@ -45,7 +47,7 @@ Spectrum DirectIntegrator::Li(const Ray& ray, const Scene& scene, Sampler& sampl
             continue;
         }
 
-        const Spectrum f = hit->bsdf->eval(ls.wi, -ray.direction, hit->normal);
+        const Spectrum f = hit->bsdf->eval(ls.wi, -ray.direction, hit->normal, lambdas);
         Spectrum contribution = f * ls.radiance * cosTheta;
         if (!light->isDelta()) {
             contribution = contribution / ls.pdf;

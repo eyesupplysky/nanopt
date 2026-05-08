@@ -4,20 +4,20 @@
 
 #include "light/light.hpp"
 #include "math/point3.hpp"
-#include "spectrum/spectrum.hpp"
+#include "spectrum/rgb_spectrum.hpp"
 
 namespace nanopt {
 
 class PointLight : public Light {
 public:
-    PointLight(Point3 position, Spectrum intensity);
+    PointLight(Point3 position, RgbSpectrum intensityRgb);
 
-    LightSample sample(Point3 from, Sample2D u) const override;
+    LightSample sample(Point3 from, Sample2D u, const SampledWavelengths& lambdas) const override;
     bool isDelta() const override { return true; }
 
 private:
     Point3 position_;
-    Spectrum intensity_;
+    RgbSpectrum intensityRgb_;
 };
 
 }  // namespace nanopt

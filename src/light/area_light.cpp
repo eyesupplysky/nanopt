@@ -6,11 +6,13 @@
 
 #include "math/sampling.hpp"
 #include "math/vec3.hpp"
+#include "spectrum/rgb_upsample.hpp"
+#include "spectrum/sampled_spectrum.hpp"
 
 namespace nanopt {
 
-AreaLight::AreaLight(Point3 v0, Point3 v1, Point3 v2, Spectrum emission)
-    : v0_(v0), v1_(v1), v2_(v2), emission_(emission) {
+AreaLight::AreaLight(Point3 v0, Point3 v1, Point3 v2, RgbSpectrum emissionRgb)
+    : v0_(v0), v1_(v1), v2_(v2), emissionRgb_(emissionRgb) {
     const Vec3 e1 = v1_ - v0_;
     const Vec3 e2 = v2_ - v0_;
     const Vec3 cr = cross(e1, e2);
@@ -19,7 +21,7 @@ AreaLight::AreaLight(Point3 v0, Point3 v1, Point3 v2, Spectrum emission)
     normal_ = crLen > 0.0f ? cr / crLen : Vec3{0.0f, 0.0f, 0.0f};
 }
 
-LightSample AreaLight::sample(Point3 from, Sample2D u) const {
+LightSample AreaLight::sample(Point3 from, Sample2D u, const SampledWavelengths& lambdas) const {
     const Sample2D bary = uniformTriangleBarycentric(u);
     const float b0 = bary.u;
     const float b1 = bary.v;
@@ -49,9 +51,13 @@ LightSample AreaLight::sample(Point3 from, Sample2D u) const {
         s.pdf = 0.0f;
         return s;
     }
-    s.radiance = emission_;
+    s.radiance = sampledIlluminantFromRgb(emissionRgb_, lambdas);
     s.pdf = distSq / (cosThetaPrime * area_);
     return s;
+}
+
+Spectrum AreaLight::emit(const SampledWavelengths& lambdas) const {
+    return sampledIlluminantFromRgb(emissionRgb_, lambdas);
 }
 
 }  // namespace nanopt

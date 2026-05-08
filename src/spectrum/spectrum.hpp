@@ -1,11 +1,11 @@
-//! Spectrum keystone alias — definition swaps to SampledSpectrum at M3 without disturbing call sites
+//! Spectrum keystone alias — wavelength-sampled spectrum used for all radiance and throughput in the renderer
 
 #pragma once
 
-#include "spectrum/rgb_spectrum.hpp"
+#include "spectrum/sampled_spectrum.hpp"
 
 namespace nanopt {
 
-using Spectrum = RgbSpectrum;
+using Spectrum = SampledSpectrum;
 
 }  // namespace nanopt

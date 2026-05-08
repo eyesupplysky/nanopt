@@ -16,6 +16,7 @@
 #include "math/vec3.hpp"
 #include "sampler/sampler.hpp"
 #include "scene/scene.hpp"
+#include "spectrum/rgb_upsample.hpp"
 
 namespace nanopt {
 
@@ -24,10 +25,11 @@ namespace {
 constexpr float kShadowEpsilon = 1e-4f;
 constexpr float kSpawnEpsilon = 1e-4f;
 
-Spectrum estimateDirectLighting(const Scene& scene, const Hit& hit, Vec3 wo, Sampler& sampler) {
+Spectrum estimateDirectLighting(const Scene& scene, const Hit& hit, Vec3 wo, Sampler& sampler,
+                                const SampledWavelengths& lambdas) {
     Spectrum total{0.0f};
     for (const auto& light : scene.lights()) {
-        const LightSample ls = light->sample(hit.position, sampler.get2D());
+        const LightSample ls = light->sample(hit.position, sampler.get2D(), lambdas);
         if (ls.pdf <= 0.0f || ls.radiance.isBlack()) {
             continue;
         }
@@ -40,7 +42,7 @@ Spectrum estimateDirectLighting(const Scene& scene, const Hit& hit, Vec3 wo, Sam
         if (scene.world().intersect(shadow).has_value()) {
             continue;
         }
-        const Spectrum f = hit.bsdf->eval(ls.wi, wo, hit.normal);
+        const Spectrum f = hit.bsdf->eval(ls.wi, wo, hit.normal, lambdas);
         Spectrum contribution = f * ls.radiance * cosTheta;
         if (!light->isDelta()) {
             contribution = contribution / ls.pdf;
@@ -52,10 +54,11 @@ Spectrum estimateDirectLighting(const Scene& scene, const Hit& hit, Vec3 wo, Sam
 
 }  // namespace
 
-PathIntegrator::PathIntegrator(int maxDepth, int rrStartDepth, Spectrum background)
-    : maxDepth_(maxDepth), rrStartDepth_(rrStartDepth), background_(background) {}
+PathIntegrator::PathIntegrator(int maxDepth, int rrStartDepth, RgbSpectrum backgroundRgb)
+    : maxDepth_(maxDepth), rrStartDepth_(rrStartDepth), backgroundRgb_(backgroundRgb) {}
 
-Spectrum PathIntegrator::Li(const Ray& primary, const Scene& scene, Sampler& sampler) const {
+Spectrum PathIntegrator::Li(const Ray& primary, const Scene& scene, Sampler& sampler,
+                            const SampledWavelengths& lambdas) const {
     Spectrum L{0.0f};
     Spectrum throughput{1.0f};
     Ray ray = primary;
@@ -63,7 +66,7 @@ Spectrum PathIntegrator::Li(const Ray& primary, const Scene& scene, Sampler& sam
     for (int depth = 0; depth < maxDepth_; ++depth) {
         const std::optional<Hit> hit = scene.world().intersect(ray);
         if (!hit.has_value()) {
-            L += throughput * background_;
+            L += throughput * sampledIlluminantFromRgb(backgroundRgb_, lambdas);
             break;
         }
 
@@ -73,14 +76,14 @@ Spectrum PathIntegrator::Li(const Ray& primary, const Scene& scene, Sampler& sam
             // Direct primary-ray hit on emitter: add emission and terminate.
             // NEE owns indirect emitter contributions, so we must drop bounce > 0.
             if (depth == 0 && dot(wo, hit->normal) > 0.0f) {
-                L += throughput * hit->areaLight->emit();
+                L += throughput * hit->areaLight->emit(lambdas);
             }
             break;
         }
 
-        L += throughput * estimateDirectLighting(scene, *hit, wo, sampler);
+        L += throughput * estimateDirectLighting(scene, *hit, wo, sampler, lambdas);
 
-        const BsdfSample bs = hit->bsdf->sample(wo, hit->normal, sampler);
+        const BsdfSample bs = hit->bsdf->sample(wo, hit->normal, sampler, lambdas);
         if (bs.pdf <= 0.0f || bs.value.isBlack()) {
             break;
         }

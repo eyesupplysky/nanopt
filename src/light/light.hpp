@@ -6,6 +6,7 @@
 #include "math/vec3.hpp"
 #include "sampler/sampler.hpp"
 #include "spectrum/spectrum.hpp"
+#include "spectrum/wavelength.hpp"
 
 namespace nanopt {
 
@@ -20,9 +21,9 @@ class Light {
 public:
     virtual ~Light() = default;
 
-    /// Sample a direction toward the light from the shading point.
+    /// Sample a direction toward the light from the shading point, returning radiance evaluated at the supplied wavelengths.
     /// u supplies the 2D random sample needed by area-style lights; delta lights ignore it.
-    virtual LightSample sample(Point3 from, Sample2D u) const = 0;
+    virtual LightSample sample(Point3 from, Sample2D u, const SampledWavelengths& lambdas) const = 0;
 
     /// True for delta-distribution lights (point, directional). Integrators skip pdf division for these.
     virtual bool isDelta() const { return false; }

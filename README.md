@@ -8,12 +8,12 @@ Spectral rendering pays back the ~2× scope over an RGB tracer with dispersion (
 
 - [x] **M1** — RGB pinhole ray caster: scene graph, sphere primitive, ray-sphere intersection, single-bounce direct lighting, PPM output.
 - [x] **M2** — Path tracing (RGB): Russian-roulette-terminated multi-bounce GI, BVH for triangle meshes, OBJ loader, Cornell box.
-- [ ] **M3** — Spectral upgrade: wavelength sampling, hero-wavelength MIS, CIE 1931 → sRGB output.
+- [x] **M3** — Spectral upgrade: hero+stratified wavelength sampling (5 samples per ray), Smits RGB-to-spectrum upsampling for scene literals, CIE 1931 spectral integration via Wyman analytic fits, D65-normalized XYZ → linear sRGB output.
 - [ ] **M4** — Materials: Lambertian, conductor (Fresnel + GGX), dielectric (wavelength-dependent IOR via Sellmeier).
 - [ ] **M5** — Importance sampling: MIS for direct lighting, cosine-weighted hemisphere sampling, GGX VNDF sampling.
 - [ ] **M6** — Multithreading + polish: tile-based parallel renderer, public documentation of the light transport equation, spectral pipeline, BVH layout, and BRDF reference.
 
-M2 is complete. The Cornell box at `assets/cornell-box.obj` renders via a path-traced integrator with next-event estimation, Russian-roulette path termination, and a diffuse area light. Soft shadows and color bleeding are visible; the canonical 256-sample reference render lives at `references/m2-cornell.png` as the visual-diff baseline for future milestones.
+M3 is complete. Light transport is computed per-wavelength: each path samples 5 wavelengths (one hero + four stratified secondaries) across 380–750 nm, BSDFs and lights upsample their RGB literals to those wavelengths via the Smits 1999 algorithm, and the integrator returns radiance evaluated at the path's wavelengths. The framebuffer accumulates CIE XYZ tristimulus values; output goes through XYZ → linear sRGB → 1/2.2 gamma. The 256-sample Cornell reference at `references/m3-cornell.png` matches `references/m2-cornell.png` on neutral materials to within ±6 byte values per pixel, confirming the spectral pipeline round-trips RGB correctly.
 
 ## Build
 

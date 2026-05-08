@@ -4,6 +4,7 @@
 
 #include "math/ray.hpp"
 #include "spectrum/spectrum.hpp"
+#include "spectrum/wavelength.hpp"
 
 namespace nanopt {
 
@@ -14,8 +15,9 @@ class Integrator {
 public:
     virtual ~Integrator() = default;
 
-    /// Compute incident radiance arriving along the given ray
-    virtual Spectrum Li(const Ray& ray, const Scene& scene, Sampler& sampler) const = 0;
+    /// Compute incident radiance arriving along the given ray, sampled at the supplied wavelengths
+    virtual Spectrum Li(const Ray& ray, const Scene& scene, Sampler& sampler,
+                        const SampledWavelengths& lambdas) const = 0;
 };
 
 }  // namespace nanopt

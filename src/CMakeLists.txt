@@ -10,6 +10,9 @@ add_library(nanopt_core STATIC
     light/area_light.cpp
     material/lambertian.cpp
     scene/scene.cpp
+    spectrum/cie.cpp
+    spectrum/rgb_upsample.cpp
+    spectrum/wavelength.cpp
     integrator/direct_integrator.cpp
     integrator/path_integrator.cpp
     io/obj_loader.cpp

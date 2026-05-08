@@ -4,6 +4,7 @@
 
 #include "integrator/integrator.hpp"
 #include "math/ray.hpp"
+#include "spectrum/rgb_spectrum.hpp"
 #include "spectrum/spectrum.hpp"
 
 namespace nanopt {
@@ -14,14 +15,15 @@ class Sampler;
 class PathIntegrator : public Integrator {
 public:
     explicit PathIntegrator(int maxDepth = 8, int rrStartDepth = 3,
-                            Spectrum background = Spectrum{0.0f});
+                            RgbSpectrum backgroundRgb = RgbSpectrum{});
 
-    Spectrum Li(const Ray& ray, const Scene& scene, Sampler& sampler) const override;
+    Spectrum Li(const Ray& ray, const Scene& scene, Sampler& sampler,
+                const SampledWavelengths& lambdas) const override;
 
 private:
     int maxDepth_;
     int rrStartDepth_;
-    Spectrum background_;
+    RgbSpectrum backgroundRgb_;
 };
 
 }  // namespace nanopt
